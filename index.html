@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Riju AI Chat</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%237c5cfc'/><text y='.9em' font-size='70' x='15' fill='white' font-weight='800'>R</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+      from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    // ============================================================
+    // STEP 1: Firebase config paste koro ekhane
+    // ============================================================
+   const firebaseConfig = {
+
+  apiKey: "AIzaSyD6bc_4XAooQM4yUTtbGXsoJSZazBVDI7c",
+
+  authDomain: "riju-ai-chat-cde68.firebaseapp.com",
+
+  projectId: "riju-ai-chat-cde68",
+
+  storageBucket: "riju-ai-chat-cde68.firebasestorage.app",
+
+  messagingSenderId: "832653690775",
+
+  appId: "1:832653690775:web:80a45642367d3f0e98a6d2"
+
+};
+
+    // ============================================================
+    // STEP 2: Backend URL - Render deploy korar por update koro
+    // ============================================================
+    window.BACKEND_URL = "https://riju-ai-backend.onrender.com";
+
+    // ============================================================
+    // STEP 3: Admin Gmail - tomar admin email diye replace koro
+    // ============================================================
+    window.ADMIN_EMAIL = "rijubala73@gmail.com";
+
+    // ============================================================
+    // STEP 4: Admin secret key - backend .env er shathe match korbe
+    // ============================================================
+    window.ADMIN_KEY = "RijutheAdmin2026!";
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
+
+    window.firebaseAuth = auth;
+    window.googleProvider = provider;
+    window.signInWithPopup = signInWithPopup;
+    window.signOut = signOut;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.currentUser = {
+          uid: user.uid,
+          name: user.displayName,
+          email: user.email,
+          photo: user.photoURL,
+          initial: user.displayName ? user.displayName[0].toUpperCase() : 'U'
+        };
+        window.currentIsAdmin = (user.email === window.ADMIN_EMAIL);
+        showChatPage();
+      } else {
+        window.currentUser = null;
+        window.currentIsAdmin = false;
+        showLoginPage();
+      }
+    });
+
+    window.doGoogleLogin = async () => {
+      try {
+        const loginBtn = document.getElementById('googleLoginBtn');
+        loginBtn.innerHTML = '<span class="spin">⟳</span> সংযোগ হচ্ছে...';
+        loginBtn.disabled = true;
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.error(err);
+        const loginBtn = document.getElementById('googleLoginBtn');
+        loginBtn.innerHTML = '<svg class="google-icon" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Google দিয়ে Login করুন';
+        loginBtn.disabled = false;
+        alert('Login সমস্যা হয়েছে। Firebase config ঠিক করো।');
+      }
+    };
+
+    window.doLogout = async () => {
+      await signOut(auth);
+    };
+  </script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #080811;
+      --surface: #0f0f1a;
+      --card: #161622;
+      --card2: #1c1c2e;
+      --border: rgba(108,87,255,0.18);
+      --border2: rgba(108,87,255,0.3);
+      --accent: #6c57ff;
+      --accent2: #00e5b0;
+      --accent3: #ff5c8a;
+      --gold: #f5c542;
+      --text: #ece9ff;
+      --muted: #7a7899;
+      --glow: rgba(108,87,255,0.25);
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow: hidden; }
+
+    /* ── PAGE SYSTEM ── */
+    .page { display: none; width: 100vw; height: 100vh; position: fixed; inset: 0; }
+    .page.active { display: flex; }
+
+    /* ── BACKGROUND ORBS ── */
+    .orbs {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+    }
+    .orb {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.4;
+      animation: orbFloat 12s ease-in-out infinite;
+    }
+    .orb1 { width:500px;height:500px;top:-150px;left:-150px;background:radial-gradient(circle,#6c57ff,transparent); animation-delay:0s; }
+    .orb2 { width:400px;height:400px;bottom:-100px;right:-100px;background:radial-gradient(circle,#00e5b0,transparent); animation-delay:-4s; }
+    .orb3 { width:300px;height:300px;top:50%;left:40%;background:radial-gradient(circle,#ff5c8a,transparent);opacity:0.2; animation-delay:-8s; }
+    @keyframes orbFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(30px,-20px) scale(1.05); }
+      66% { transform: translate(-20px,15px) scale(0.95); }
+    }
+
+    /* ═══════════════════════════════
+       LOGIN PAGE
+    ═══════════════════════════════ */
+    #loginPage { align-items: center; justify-content: center; flex-direction: column; }
+
+    .login-wrap {
+      position: relative; z-index: 1;
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 28px;
+      padding: 52px 44px;
+      width: 420px; max-width: 95vw;
+      text-align: center;
+      animation: fadeUp 0.7s cubic-bezier(0.16,1,0.3,1);
+      box-shadow: 0 0 80px rgba(108,87,255,0.12), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(28px);} to{opacity:1;transform:translateY(0);} }
+
+    .logo-ring {
+      width: 80px; height: 80px; margin: 0 auto 24px;
+      border-radius: 22px;
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-size: 34px; font-weight: 800; color: #fff;
+      box-shadow: 0 12px 40px var(--glow);
+      animation: logoBob 4s ease-in-out infinite;
+    }
+    @keyframes logoBob {
+      0%,100%{transform:translateY(0) rotate(0deg);}
+      50%{transform:translateY(-6px) rotate(2deg);}
+    }
+
+    .login-h { font-family:'Syne',sans-serif;font-size:30px;font-weight:800;
+      background:linear-gradient(135deg,#fff 30%,var(--accent2));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+      margin-bottom:6px;
+    }
+    .login-sub { color:var(--muted);font-size:14px;margin-bottom:36px;line-height:1.5; }
+
+    #googleLoginBtn {
+      width:100%;padding:14px 20px;border-radius:14px;
+      background:#fff;border:none;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:12px;
+      font-family:'DM Sans',sans-serif;font-size:15px;font-weight:500;color:#222;
+      transition:all 0.25s;
+      box-shadow: 0 4px 20px rgba(255,255,255,0.08);
+    }
+    #googleLoginBtn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(255,255,255,0.15); }
+    #googleLoginBtn:disabled { opacity:0.7;cursor:not-allowed; }
+    .google-icon { width:20px;height:20px;flex-shrink:0; }
+    .spin { display:inline-block;animation:spin 1s linear infinite;font-size:18px; }
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    .features { display:flex;gap:12px;margin-top:28px;justify-content:center;flex-wrap:wrap; }
+    .feat-chip {
+      padding:6px 14px;border-radius:20px;font-size:12px;
+      background:rgba(108,87,255,0.1);border:1px solid var(--border);
+      color:var(--muted);display:flex;align-items:center;gap:5px;
+    }
+
+    /* ═══════════════════════════════
+       CHAT PAGE
+    ═══════════════════════════════ */
+    #chatPage { flex-direction: row; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 264px; min-width: 264px; height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: relative; z-index: 2;
+      animation: sideIn 0.5s cubic-bezier(0.16,1,0.3,1);
+    }
+    @keyframes sideIn{from{transform:translateX(-16px);opacity:0;}to{transform:translateX(0);opacity:1;}}
+
+    .sb-head {
+      padding: 18px 16px; border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:10px;
+    }
+    .sb-logo {
+      width:38px;height:38px;border-radius:11px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Syne',sans-serif;font-weight:800;font-size:16px;color:#fff;
+      flex-shrink:0;
+    }
+    .sb-brand { font-family:'Syne',sans-serif;font-weight:700;font-size:15px; }
+    .sb-brand em { color:var(--accent2);font-style:normal; }
+
+    .new-btn {
+      margin:12px;padding:10px 14px;border-radius:11px;
+      background:linear-gradient(135deg,var(--accent),#8b5cf6);
+      border:none;color:#fff;font-family:'DM Sans',sans-serif;
+      font-size:13px;font-weight:500;cursor:pointer;
+      display:flex;align-items:center;gap:8px;transition:all 0.2s;
+      box-shadow:0 4px 16px var(--glow);
+    }
+    .new-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px var(--glow);}
+
+    .sb-history{flex:1;overflow-y:auto;padding:4px 8px;}
+    .sb-history::-webkit-scrollbar{width:3px;}
+    .sb-history::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+    .sb-label{font-size:10px;color:var(--muted);padding:6px 8px;text-transform:uppercase;letter-spacing:0.08em;}
+    .sb-item{
+      padding:8px 10px;border-radius:9px;cursor:pointer;
+      font-size:13px;color:var(--muted);transition:all 0.18s;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      display:flex;align-items:center;gap:8px;
+    }
+    .sb-item:hover,.sb-item.active{background:rgba(108,87,255,0.1);color:var(--text);}
+    .sb-item.active{border-left:2px solid var(--accent);}
+
+    .sb-foot{padding:12px;border-top:1px solid var(--border);}
+    .user-row{
+      display:flex;align-items:center;gap:10px;padding:8px 10px;
+      border-radius:10px;cursor:pointer;transition:all 0.18s;
+    }
+    .user-row:hover{background:rgba(108,87,255,0.08);}
+    .u-av{
+      width:34px;height:34px;border-radius:50%;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      font-size:13px;font-weight:600;color:#fff;overflow:hidden;
+    }
+    .u-av img{width:100%;height:100%;object-fit:cover;}
+    .u-name{font-size:13px;font-weight:500;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+    .u-email{font-size:11px;color:var(--muted);
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;}
+
+    /* Chat Main */
+    .chat-main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;position:relative;z-index:1;}
+
+    .chat-nav{
+      padding:14px 20px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+      background:rgba(15,15,26,0.85);backdrop-filter:blur(12px);
+      flex-shrink:0;
+    }
+    .chat-nav-left{display:flex;align-items:center;gap:10px;}
+    .chat-title-text{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;}
+    .live-dot{
+      padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;
+      background:rgba(0,229,176,0.1);color:var(--accent2);
+      border:1px solid rgba(0,229,176,0.2);
+      display:flex;align-items:center;gap:5px;
+    }
+    .live-dot::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:livePulse 2s infinite;}
+    @keyframes livePulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
+    .nav-btns{display:flex;gap:8px;}
+    .nav-btn{
+      padding:6px 14px;border-radius:9px;border:1px solid var(--border);
+      background:transparent;color:var(--muted);font-size:12px;
+      cursor:pointer;transition:all 0.18s;font-family:'DM Sans',sans-serif;
+    }
+    .nav-btn:hover{color:var(--text);border-color:var(--accent);}
+    .nav-btn.admin-btn{color:var(--accent3);border-color:rgba(255,92,138,0.25);}
+    .nav-btn.admin-btn:hover{background:rgba(255,92,138,0.08);}
+
+    /* Messages */
+    .msgs{
+      flex:1;overflow-y:auto;padding:24px 20px;
+      display:flex;flex-direction:column;gap:16px;
+      scroll-behavior:smooth;
+    }
+    .msgs::-webkit-scrollbar{width:4px;}
+    .msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+    /* Welcome Screen */
+    .welcome{
+      flex:1;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      padding:40px 20px;text-align:center;
+    }
+    .welcome-icon{
+      width:88px;height:88px;border-radius:26px;
+      background:linear-gradient(135deg,var(--accent),var(--accent2));
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:#fff;
+      margin:0 auto 22px;
+      box-shadow:0 16px 56px var(--glow);
+      animation:iconFloat 4s ease-in-out infinite;
+    }
+    @keyframes iconFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+    .welcome-h{
+      font-family:'Syne',sans-serif;font-size:30px;font-weight:800;
+      margin-bottom:8px;
+      background:linear-gradient(135deg,#fff,var(--accent2));
+      -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+    }
+    .welcome-p{color:var(--muted);font-size:15px;margin-bottom:36px;max-width:420px;line-height:1.6;}
+
+    .sg-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:500px;width:100%;}
+    .sg-card{
+      padding:16px;border-radius:14px;
+      background:var(--card);border:1px solid var(--border);
+      cursor:pointer;text-align:left;transition:all 0.22s;
+    }
+    .sg-card:hover{border-color:var(--accent);background:rgba(108,87,255,0.07);transform:translateY(-3px);box-shadow:0 8px 24px var(--glow);}
+    .sg-icon{font-size:22px;margin-bottom:8px;display:block;}
+    .sg-title{font-size:13px;font-weight:500;color:var(--text);}
+    .sg-desc{font-size:12px;color:var(--muted);margin-top:3px;}
+
+    /* Message bubbles */
+    .msg{display:flex;gap:12px;max-width:78%;animation:msgPop 0.35s cubic-bezier(0.16,1,0.3,1);}
+    @keyframes msgPop{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    .msg.user{margin-left:auto;flex-direction:row-reverse;}
+    .msg-av{
+      width:34px;height:34px;border-radius:50%;flex-shrink:0;
+      display:flex;align-items:center;justify-content:center;
+      font-size:12px;font-weight:600;color:#fff;overflow:hidden;
+    }
+    .msg.ai .msg-av{background:linear-gradient(135deg,var(--accent),var(--accent2));}
+    .msg.user .msg-av{background:linear-gradient(135deg,var(--accent3),#ff9966);}
+    .msg-av img{width:100%;height:100%;object-fit:cover;}
+    .bubble{padding:13px 16px;border-radius:18px;font-size:14px;line-height:1.65;}
+    .msg.ai .bubble{
+      background:var(--card2);border:1px solid var(--border);
+      border-top-left-radius:4px;color:var(--text);
+    }
+    .msg.user .bubble{
+      background:linear-gradient(135deg,var(--accent),#8b5cf6);
+      border-top-right-radius:4px;color:#fff;
+    }
+
+    /* Typing */
+    .typing-wrap{display:flex;gap:12px;align-items:flex-end;}
+    .typing-bubble{
+      padding:14px 18px;background:var(--card2);border:1px solid var(--border);
+      border-radius:18px;border-top-left-radius:4px;
+      display:flex;gap:5px;align-items:center;
+    }
+    .tdot{width:7px;height:7px;border-radius:50%;background:var(--accent);
+      animation:tdot 1.4s ease-in-out infinite;}
+    .tdot:nth-child(2){animation-delay:0.2s;background:var(--accent2);}
+    .tdot:nth-child(3){animation-delay:0.4s;background:var(--accent3);}
+    @keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:0.35;}30%{transform:translateY(-7px);opacity:1;}}
+
+    /* Input */
+    .input-zone{
+      padding:16px 20px;border-top:1px solid var(--border);
+      background:rgba(15,15,26,0.9);backdrop-filter:blur(12px);flex-shrink:0;
+    }
+    .input-inner{
+      display:flex;align-items:flex-end;gap:10px;
+      background:var(--card2);border:1px solid var(--border);
+      border-radius:18px;padding:10px 12px;
+      transition:border-color 0.2s,box-shadow 0.2s;
+    }
+    .input-inner:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(108,87,255,0.1);}
+    #chatInput{
+      flex:1;background:transparent;border:none;outline:none;
+      color:var(--text);font-family:'DM Sans',sans-serif;
+      font-size:14px;resize:none;max-height:130px;min-height:24px;line-height:1.5;
+    }
+    #chatInput::placeholder{color:var(--muted);}
+    .send-btn{
+      width:38px;height:38px;border-radius:11px;flex-shrink:0;
+      background:linear-gradient(135deg,var(--accent),#8b5cf6);
+      border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:all 0.2s;color:#fff;font-size:16px;
+    }
+    .send-btn:hover{transform:scale(1.1);box-shadow:0 4px 16px var(--glow);}
+    .send-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none;}
+    .input-hint{font-size:11px;color:var(--muted);margin-top:8px;text-align:center;}
+
+    /* ═══════════════════════════════
+       ADMIN PAGE
+    ═══════════════════════════════ */
+    #adminPage{flex-direction:column;background:var(--bg);}
+
+    .admin-nav{
+      padding:14px 24px;border-bottom:1px solid var(--border);
+      background:var(--surface);
+      display:flex;align-items:center;justify-content:space-between;
+      position:relative;z-index:2;flex-shrink:0;
+    }
+    .admin-brand{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;}
+    .admin-brand em{color:var(--accent3);font-style:normal;}
+    .admin-pill{
+      padding:4px 14px;border-radius:20px;font-size:12px;font-weight:500;
+      background:rgba(255,92,138,0.1);color:var(--accent3);
+      border:1px solid rgba(255,92,138,0.2);
+    }
+    .admin-navbtns{display:flex;gap:10px;}
+
+    .admin-body{flex:1;overflow-y:auto;padding:24px;position:relative;z-index:1;}
+    .admin-body::-webkit-scrollbar{width:4px;}
+    .admin-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+    .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+    .s-card{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:16px;padding:20px;
+      animation:fadeUp 0.5s cubic-bezier(0.16,1,0.3,1) backwards;
+    }
+    .s-card:nth-child(1){animation-delay:0.05s;}
+    .s-card:nth-child(2){animation-delay:0.1s;}
+    .s-card:nth-child(3){animation-delay:0.15s;}
+    .s-card:nth-child(4){animation-delay:0.2s;}
+    .s-label{font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em;}
+    .s-num{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;}
+    .s-sub{font-size:12px;color:var(--accent2);margin-top:5px;}
+
+    .sec-title{
+      font-family:'Syne',sans-serif;font-size:16px;font-weight:700;
+      margin-bottom:16px;display:flex;align-items:center;gap:8px;
+    }
+    .sec-dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);
+      animation:livePulse 2s infinite;}
+
+    .users-tbl{
+      background:var(--card);border:1px solid var(--border);
+      border-radius:16px;overflow:hidden;
+    }
+    .tbl-head{
+      display:grid;grid-template-columns:2fr 2.5fr 0.8fr 1fr 1fr;
+      padding:12px 16px;
+      background:rgba(108,87,255,0.04);border-bottom:1px solid var(--border);
+      font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.07em;
+    }
+    .tbl-row{
+      display:grid;grid-template-columns:2fr 2.5fr 0.8fr 1fr 1fr;
+      padding:14px 16px;border-bottom:1px solid rgba(108,87,255,0.06);
+      align-items:center;font-size:13px;cursor:pointer;
+      transition:background 0.18s;
+    }
+    .tbl-row:last-child{border-bottom:none;}
+    .tbl-row:hover{background:rgba(108,87,255,0.04);}
+    .row-u{display:flex;align-items:center;gap:10px;}
+    .r-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#fff;flex-shrink:0;}
+    .r-name{font-weight:500;}
+    .r-email{color:var(--muted);font-size:12px;}
+    .sbadge{padding:3px 9px;border-radius:12px;font-size:11px;font-weight:500;}
+    .sbadge.on{background:rgba(0,229,176,0.1);color:var(--accent2);}
+    .sbadge.off{background:rgba(122,120,153,0.1);color:var(--muted);}
+    .view-btn{
+      padding:5px 12px;border-radius:9px;
+      background:rgba(108,87,255,0.1);border:1px solid rgba(108,87,255,0.2);
+      color:var(--accent);font-size:12px;cursor:pointer;
+      transition:all 0.18s;font-family:'DM Sans',sans-serif;
+    }
+    .view-btn:hover{background:rgba(108,87,255,0.2);}
+
+    /* Modal */
+    .overlay{
+      display:none;position:fixed;inset:0;
+      background:rgba(0,0,0,0.75);z-index:200;
+      align-items:center;justify-content:center;
+      backdrop-filter:blur(6px);
+    }
+    .overlay.open{display:flex;}
+    .modal{
+      background:var(--card);border:1px solid var(--border2);
+      border-radius:22px;width:600px;max-width:96vw;max-height:82vh;
+      display:flex;flex-direction:column;
+      animation:fadeUp 0.3s cubic-bezier(0.16,1,0.3,1);
+    }
+    .modal-head{
+      padding:20px 24px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:16px;}
+    .modal-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+    .modal-x{
+      width:34px;height:34px;border-radius:9px;
+      background:rgba(122,120,153,0.1);border:none;color:var(--muted);
+      cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;
+      transition:all 0.18s;
+    }
+    .modal-x:hover{background:rgba(255,92,138,0.1);color:var(--accent3);}
+    .modal-msgs{
+      flex:1;overflow-y:auto;padding:20px 24px;
+      display:flex;flex-direction:column;gap:14px;
+    }
+    .modal-msgs::-webkit-scrollbar{width:4px;}
+    .modal-msgs::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+    /* Utility */
+    .btn-back{
+      padding:8px 16px;border-radius:10px;
+      background:transparent;border:1px solid var(--border);
+      color:var(--muted);font-size:13px;cursor:pointer;
+      transition:all 0.18s;font-family:'DM Sans',sans-serif;
+      display:flex;align-items:center;gap:6px;
+    }
+    .btn-back:hover{color:var(--text);border-color:var(--accent);}
+
+    /* Responsive */
+    @media(max-width:700px){
+      .sidebar{display:none;}
+      .stats-row{grid-template-columns:1fr 1fr;}
+      .tbl-head,.tbl-row{grid-template-columns:2fr 1fr 1fr;}
+      .tbl-head > span:nth-child(2),.tbl-row > div:nth-child(2){display:none;}
+      .sg-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body>
+  <!-- Background orbs -->
+  <div class="orbs">
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+    <div class="orb orb3"></div>
+  </div>
+
+  <!-- ═══ LOGIN PAGE ═══ -->
+  <div id="loginPage" class="page active">
+    <div class="login-wrap">
+      <div class="logo-ring">R</div>
+      <div class="login-h">Riju AI Chat</div>
+      <div class="login-sub">বাংলাদেশের নিজস্ব AI সহকারী<br>যেকোনো প্রশ্নের উত্তর বাংলায় পাও</div>
+      <button id="googleLoginBtn" onclick="doGoogleLogin()">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Google দিয়ে Login করুন
+      </button>
+      <div class="features">
+        <div class="feat-chip">⚡ Claude AI</div>
+        <div class="feat-chip">🇧🇩 বাংলায় কথা বলুন</div>
+        <div class="feat-chip">🔒 Google Login</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ CHAT PAGE ═══ -->
+  <div id="chatPage" class="page">
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sb-head">
+        <div class="sb-logo">R</div>
+        <div>
+          <div class="sb-brand">Riju <em>AI</em></div>
+        </div>
+      </div>
+      <button class="new-btn" onclick="startNewChat()">
+        <span>✦</span> নতুন Chat
+      </button>
+      <div class="sb-history">
+        <div class="sb-label">আজকে</div>
+        <div class="sb-item active" id="currentChatItem">💬 নতুন কথোপকথন</div>
+        <div class="sb-label" id="pastLabel" style="display:none">আগের Chat</div>
+        <div id="pastChats"></div>
+      </div>
+      <div class="sb-foot">
+        <div class="user-row">
+          <div class="u-av" id="sidebarAv" style="background:linear-gradient(135deg,#6c57ff,#ff5c8a)">U</div>
+          <div style="overflow:hidden;">
+            <div class="u-name" id="sidebarName">লোড হচ্ছে...</div>
+            <div class="u-email" id="sidebarEmail">...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Chat -->
+    <div class="chat-main">
+      <div class="chat-nav">
+        <div class="chat-nav-left">
+          <div class="chat-title-text">Riju AI Chat</div>
+          <div class="live-dot">Live</div>
+        </div>
+        <div class="nav-btns">
+          <button class="nav-btn admin-btn" id="adminNavBtn" style="display:none" onclick="showAdminPage()">⚡ Admin</button>
+          <button class="nav-btn" onclick="doLogout()">← Logout</button>
+        </div>
+      </div>
+
+      <!-- Welcome -->
+      <div id="welcomeScreen" class="welcome">
+        <div class="welcome-icon">R</div>
+        <div class="welcome-h" id="welcomeGreeting">স্বাগতম!</div>
+        <div class="welcome-p">আমি Riju AI। যেকোনো প্রশ্ন করো — বাংলায় বা ইংরেজিতে, সব বুঝি।</div>
+        <div class="sg-grid">
+          <div class="sg-card" onclick="useSug('একটি Python ফাংশন লিখে দাও যেটা দুটো সংখ্যা যোগ করে')">
+            <span class="sg-icon">💻</span>
+            <div class="sg-title">কোড লেখা</div>
+            <div class="sg-desc">Python, JavaScript, C++ এবং আরো</div>
+          </div>
+          <div class="sg-card" onclick="useSug('বাংলাদেশের মুক্তিযুদ্ধ সম্পর্কে বিস্তারিত বলো')">
+            <span class="sg-icon">📚</span>
+            <div class="sg-title">পড়াশোনা</div>
+            <div class="sg-desc">যেকোনো বিষয় সহজে বুঝি</div>
+          </div>
+          <div class="sg-card" onclick="useSug('একটি ছোট online business শুরু করার পরিকল্পনা দাও')">
+            <span class="sg-icon">💡</span>
+            <div class="sg-title">ব্যবসার আইডিয়া</div>
+            <div class="sg-desc">পরিকল্পনা ও পরামর্শ</div>
+          </div>
+          <div class="sg-card" onclick="useSug('বসন্তের উপর একটি সুন্দর বাংলা কবিতা লিখে দাও')">
+            <span class="sg-icon">✍️</span>
+            <div class="sg-title">সৃজনশীল লেখা</div>
+            <div class="sg-desc">গল্প, কবিতা, প্রবন্ধ</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div id="msgsArea" class="msgs" style="display:none;"></div>
+
+      <!-- Input -->
+      <div class="input-zone">
+        <div class="input-inner">
+          <textarea id="chatInput"
+            placeholder="Riju AI-কে কিছু জিজ্ঞেস করুন..."
+            rows="1"
+            onkeydown="handleKey(event)"
+            oninput="autoGrow(this)"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMsg()">↑</button>
+        </div>
+        <div class="input-hint">Enter চাপুন পাঠাতে · Shift+Enter নতুন লাইন</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ADMIN PAGE ═══ -->
+  <div id="adminPage" class="page">
+    <div class="admin-nav">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="admin-brand">Riju AI <em>Admin</em></div>
+        <div class="admin-pill">Admin Panel</div>
+      </div>
+      <div class="admin-navbtns">
+        <button class="btn-back" onclick="showChatPage()">← Chat এ ফিরুন</button>
+        <button class="btn-back" style="color:var(--accent3);border-color:rgba(255,92,138,0.25);" onclick="doLogout()">Logout</button>
+      </div>
+    </div>
+    <div class="admin-body">
+      <div class="stats-row">
+        <div class="s-card">
+          <div class="s-label">মোট ব্যবহারকারী</div>
+          <div class="s-num" style="color:var(--accent);" id="statUsers">0</div>
+          <div class="s-sub">↑ নিবন্ধিত</div>
+        </div>
+        <div class="s-card">
+          <div class="s-label">মোট Chat</div>
+          <div class="s-num" style="color:var(--accent2);" id="statChats">0</div>
+          <div class="s-sub">সব সময়ের</div>
+        </div>
+        <div class="s-card">
+          <div class="s-label">Live ব্যবহারকারী</div>
+          <div class="s-num" style="color:var(--accent3);" id="statLive">0</div>
+          <div class="s-sub">● এখন Active</div>
+        </div>
+        <div class="s-card">
+          <div class="s-label">Response Rate</div>
+          <div class="s-num" style="color:var(--gold);">99%</div>
+          <div class="s-sub">✓ Uptime</div>
+        </div>
+      </div>
+
+      <div class="sec-title">
+        <div class="sec-dot"></div>
+        সকল ব্যবহারকারীর Chat দেখুন
+      </div>
+
+      <div class="users-tbl">
+        <div class="tbl-head">
+          <span>নাম</span>
+          <span>Gmail</span>
+          <span>Chat</span>
+          <span>Status</span>
+          <span>দেখুন</span>
+        </div>
+        <div id="usersBody">
+          <div style="padding:32px;text-align:center;color:var(--muted);">লোড হচ্ছে...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Modal -->
+  <div class="overlay" id="chatOverlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <div class="modal-title" id="modalTitle">Chat ইতিহাস</div>
+          <div class="modal-sub" id="modalSub"></div>
+        </div>
+        <button class="modal-x" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-msgs" id="modalMsgs"></div>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN JS ═══ */
+  <script>
+    // ── State ──
+    let chatHistory = [];
+    let isSending = false;
+    let chatStarted = false;
+    const allSessions = {}; // {userId: [{role,text},...]}
+
+    // ── Page Switch ──
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
+    function showLoginPage() { showPage('loginPage'); }
+    function showChatPage() {
+      showPage('chatPage');
+      if (window.currentUser) {
+        setupChatUI();
+      }
+    }
+    function showAdminPage() {
+      showPage('adminPage');
+      loadAdminData();
+    }
+
+    function setupChatUI() {
+      const u = window.currentUser;
+      // Sidebar user info
+      document.getElementById('sidebarName').textContent = u.name;
+      document.getElementById('sidebarEmail').textContent = u.email;
+      const av = document.getElementById('sidebarAv');
+      if (u.photo) {
+        av.innerHTML = `<img src="${u.photo}" alt="avatar">`;
+      } else {
+        av.textContent = u.initial;
+      }
+      // Greeting
+      const hour = new Date().getHours();
+      const greet = hour < 12 ? 'শুভ সকাল' : hour < 17 ? 'শুভ অপরাহ্ন' : 'শুভ সন্ধ্যা';
+      document.getElementById('welcomeGreeting').textContent = `${greet}, ${u.name.split(' ')[0]}!`;
+      // Admin btn
+      if (window.currentIsAdmin) {
+        document.getElementById('adminNavBtn').style.display = 'block';
+      }
+    }
+
+    // ── Chat ──
+    function startNewChat() {
+      chatHistory = [];
+      chatStarted = false;
+      document.getElementById('msgsArea').innerHTML = '';
+      document.getElementById('msgsArea').style.display = 'none';
+      document.getElementById('welcomeScreen').style.display = 'flex';
+      document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('active'));
+      document.getElementById('currentChatItem').classList.add('active');
+      document.getElementById('currentChatItem').textContent = '💬 নতুন কথোপকথন';
+    }
+
+    function useSug(text) {
+      document.getElementById('chatInput').value = text;
+      sendMsg();
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+    }
+
+    function autoGrow(el) {
+      el.style.height = 'auto';
+      el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+    }
+
+    function addBubble(role, text, photoUrl, initial) {
+      const area = document.getElementById('msgsArea');
+      if (!chatStarted) {
+        document.getElementById('welcomeScreen').style.display = 'none';
+        area.style.display = 'flex';
+        chatStarted = true;
+      }
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      const avContent = (role === 'user' && photoUrl)
+        ? `<img src="${photoUrl}" alt="av">`
+        : (role === 'ai' ? 'R' : (initial || 'U'));
+      const avStyle = role === 'user' && photoUrl ? '' : '';
+      div.innerHTML = `
+        <div class="msg-av" ${avStyle}>${avContent}</div>
+        <div class="bubble">${text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/`(.*?)`/g,'<code style="background:rgba(108,87,255,0.15);padding:1px 5px;border-radius:4px;font-family:monospace">$1</code>')}</div>
+      `;
+      area.appendChild(div);
+      area.scrollTop = area.scrollHeight;
+    }
+
+    function showTyping() {
+      const area = document.getElementById('msgsArea');
+      if (!chatStarted) {
+        document.getElementById('welcomeScreen').style.display = 'none';
+        area.style.display = 'flex';
+        chatStarted = true;
+      }
+      const div = document.createElement('div');
+      div.className = 'typing-wrap'; div.id = 'typingEl';
+      div.innerHTML = `
+        <div class="msg-av" style="background:linear-gradient(135deg,var(--accent),var(--accent2))">R</div>
+        <div class="typing-bubble"><div class="tdot"></div><div class="tdot"></div><div class="tdot"></div></div>
+      `;
+      area.appendChild(div);
+      area.scrollTop = area.scrollHeight;
+    }
+    function hideTyping() {
+      const t = document.getElementById('typingEl');
+      if (t) t.remove();
+    }
+
+    async function sendMsg() {
+      if (isSending) return;
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.value = ''; input.style.height = 'auto';
+      isSending = true;
+      document.getElementById('sendBtn').disabled = true;
+
+      const u = window.currentUser || { name:'User', email:'', photo:null, initial:'U', uid:'guest' };
+      addBubble('user', text, u.photo, u.initial);
+
+      // Update sidebar
+      document.getElementById('currentChatItem').textContent = '💬 ' + text.slice(0,28) + (text.length>28?'…':'');
+
+      showTyping();
+
+      try {
+        const res = await fetch(`${window.BACKEND_URL}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text, history: chatHistory })
+        });
+
+        if (!res.ok) throw new Error('Server error');
+        const data = await res.json();
+
+        hideTyping();
+        const reply = data.reply || 'দুঃখিত, উত্তর পাওয়া যায়নি।';
+        addBubble('ai', reply);
+
+        // Update history
+        chatHistory.push({ role: 'user', text }, { role: 'ai', text: reply });
+        if (chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+
+        // Save to backend
+        if (u.uid && u.uid !== 'guest') {
+          fetch(`${window.BACKEND_URL}/api/save-chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: u.uid, userEmail: u.email,
+              userName: u.name, message: text, reply
+            })
+          }).catch(() => {});
+        }
+
+      } catch (err) {
+        hideTyping();
+        addBubble('ai', '❌ সার্ভার সংযোগ সমস্যা। Backend URL ঠিক করো অথবা একটু পরে চেষ্টা করো।');
+      }
+
+      isSending = false;
+      document.getElementById('sendBtn').disabled = false;
+    }
+
+    // ── Admin ──
+    async function loadAdminData() {
+      try {
+        const res = await fetch(`${window.BACKEND_URL}/api/admin/users`, {
+          headers: { 'x-admin-key': window.ADMIN_KEY }
+        });
+        const data = await res.json();
+        const users = data.users || [];
+
+        document.getElementById('statUsers').textContent = users.length;
+        const totalChats = users.reduce((s,u) => s + (u.chatCount||0), 0);
+        document.getElementById('statChats').textContent = totalChats;
+        document.getElementById('statLive').textContent = Math.min(users.length, 3);
+
+        const tbody = document.getElementById('usersBody');
+        if (users.length === 0) {
+          tbody.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted)">এখনো কোনো user নেই। Chat করলে এখানে দেখা যাবে।</div>';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        users.forEach((u, i) => {
+          const colors = ['#6c57ff','#00e5b0','#ff5c8a','#f5c542','#5bc0f8'];
+          const c = colors[i % colors.length];
+          const div = document.createElement('div');
+          div.className = 'tbl-row';
+          div.innerHTML = `
+            <div class="row-u">
+              <div class="r-av" style="background:${c}">${(u.name||'?')[0]}</div>
+              <div class="r-name">${u.name||'অজানা'}</div>
+            </div>
+            <div class="r-email">${u.email}</div>
+            <div>${u.chatCount||0} টি</div>
+            <div><span class="sbadge on">● Active</span></div>
+            <div><button class="view-btn" onclick="viewUserChat('${u.userId}','${u.name}','${u.email}')">দেখুন →</button></div>
+          `;
+          tbody.appendChild(div);
+        });
+      } catch(e) {
+        document.getElementById('usersBody').innerHTML =
+          '<div style="padding:32px;text-align:center;color:var(--muted)">Backend সংযোগ করতে পারছি না।</div>';
+      }
+    }
+
+    async function viewUserChat(userId, name, email) {
+      document.getElementById('modalTitle').textContent = name + '-এর Chat';
+      document.getElementById('modalSub').textContent = email;
+      document.getElementById('modalMsgs').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">লোড হচ্ছে...</div>';
+      document.getElementById('chatOverlay').classList.add('open');
+
+      try {
+        const res = await fetch(`${window.BACKEND_URL}/api/admin/user-chat/${userId}`, {
+          headers: { 'x-admin-key': window.ADMIN_KEY }
+        });
+        const data = await res.json();
+        const msgs = data.messages || [];
+        const area = document.getElementById('modalMsgs');
+        area.innerHTML = '';
+        if (msgs.length === 0) {
+          area.innerHTML = '<div style="text-align:center;color:var(--muted)">কোনো message নেই।</div>';
+          return;
+        }
+        msgs.forEach(m => {
+          const div = document.createElement('div');
+          div.className = `msg ${m.role === 'ai' ? 'ai' : 'user'}`;
+          div.innerHTML = `
+            <div class="msg-av" style="${m.role!=='ai'?'background:linear-gradient(135deg,#6c57ff,#ff5c8a)':''}">${m.role==='ai'?'R':name[0]}</div>
+            <div class="bubble">${m.text.replace(/\n/g,'<br>')}</div>
+          `;
+          area.appendChild(div);
+        });
+      } catch(e) {
+        document.getElementById('modalMsgs').innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">লোড করতে পারছি না।</div>';
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('chatOverlay').classList.remove('open');
+    }
+  </script>
+</body>
+</html>
